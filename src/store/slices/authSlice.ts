@@ -119,6 +119,7 @@ const normalizeLoginResponse = (data: any): LoginResponse => {
       roles: Array.isArray(userDetails.roles)
         ? userDetails.roles.map(String)
         : (Array.isArray(data?.roles) ? data.roles.map(String) : []),
+      profileUrl: userDetails.profileUrl ?? data?.profileUrl ?? undefined,
     },
   }
 }
