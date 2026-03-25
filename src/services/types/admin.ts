@@ -126,3 +126,54 @@ export interface UpdateStaffRequestDTO {
   department?: Department;
   staffType?: StaffType;
 }
+
+// ── Guardian DTOs ───────────────────────────────────────────────────
+
+export interface CreateGuardianRequestDTO {
+  username: string;
+  email: string;
+  initialPassword?: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  preferredName?: string;
+  dateOfBirth?: string;
+  gender?: Gender;
+  bio?: string;
+  phoneNumber?: string;
+  occupation?: string;
+  employer?: string;
+  relationshipType: string;
+  primaryContact?: boolean;
+  canPickup?: boolean;
+  financialContact?: boolean;
+  canViewGrades?: boolean;
+}
+
+export interface UpdateGuardianRequestDTO {
+  email?: string;
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  preferredName?: string;
+  dateOfBirth?: string;
+  gender?: Gender;
+  bio?: string;
+  phoneNumber?: string;
+  occupation?: string;
+  employer?: string;
+  relationshipType?: string;
+  primaryContact?: boolean;
+  canPickup?: boolean;
+  financialContact?: boolean;
+  canViewGrades?: boolean;
+}
+
+export interface LinkGuardianRequestDTO {
+  guardianId: string;
+  relationshipType: string;
+  primaryContact?: boolean;
+  canPickup?: boolean;
+  financialContact?: boolean;
+  canViewGrades?: boolean;
+}

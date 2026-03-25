@@ -7,7 +7,11 @@ import type {
   CreateLibrarianRequestDTO,
   UpdateStudentRequestDTO,
   UpdateStaffRequestDTO,
+  CreateGuardianRequestDTO,
+  UpdateGuardianRequestDTO,
+  LinkGuardianRequestDTO,
 } from "./types/admin";
+import type { ComprehensiveUserProfileResponseDTO, StudentGuardianDTO } from "./types/profile";
 
 // ── DTOs returned by the new list endpoints ───────────────────────────
 
@@ -65,6 +69,7 @@ export interface ListStudentsParams {
   size?: number;
   sortBy?: string;
   sortDir?: "asc" | "desc";
+  classId?: string;
 }
 
 export interface ListStaffParams {
@@ -79,15 +84,13 @@ export interface ListStaffParams {
 // ── Admin User Management Service ────────────────────────────────────
 
 export const adminService = {
-  /** GET /auth/admin/users/students — paginated list with search
-   *  NOTE: do NOT pass sortBy until backend fixes JPQL — `s.firstName` is on UserProfile not Student */
-  listStudents({ sortBy: _sortBy, sortDir: _sortDir, ...params }: ListStudentsParams = {}) {
+  /** GET /auth/admin/users/students — paginated list with search */
+  listStudents(params: ListStudentsParams = {}) {
     return api.get<PageResponse<StudentSummaryDTO>>("/auth/admin/users/students", { params });
   },
 
-  /** GET /auth/admin/users/staff — paginated list with search, staffType
-   *  NOTE: same sortBy issue — omit until backend JPQL is fixed */
-  listStaff({ sortBy: _sortBy, sortDir: _sortDir, ...params }: ListStaffParams = {}) {
+  /** GET /auth/admin/users/staff — paginated list with search, staffType */
+  listStaff(params: ListStaffParams = {}) {
     return api.get<PageResponse<StaffSummaryDTO>>("/auth/admin/users/staff", { params });
   },
 
@@ -124,6 +127,57 @@ export const adminService = {
   /** PUT /auth/admin/users/staff/{staffId} — staffId is the UUID field */
   updateStaff(uuid: string, data: UpdateStaffRequestDTO) {
     return api.put<string>(`/auth/admin/users/staff/${uuid}`, data);
+  },
+
+  /** PATCH /auth/admin/users/student/{studentId}/activation */
+  toggleStudentActivation(uuid: string, active: boolean) {
+    return api.patch<string>(`/auth/admin/users/student/${uuid}/activation`, null, {
+      params: { active },
+    });
+  },
+
+  /** PATCH /auth/admin/users/staff/{staffId}/activation */
+  toggleStaffActivation(uuid: string, active: boolean) {
+    return api.patch<string>(`/auth/admin/users/staff/${uuid}/activation`, null, {
+      params: { active },
+    });
+  },
+
+  /** GET /auth/admin/users/student/{studentId}/details */
+  getStudentFullDetails(uuid: string) {
+    return api.get<ComprehensiveUserProfileResponseDTO>(`/auth/admin/users/student/${uuid}/details`);
+  },
+
+  /** GET /auth/admin/users/staff/{staffId}/details */
+  getStaffFullDetails(uuid: string) {
+    return api.get<ComprehensiveUserProfileResponseDTO>(`/auth/admin/users/staff/${uuid}/details`);
+  },
+
+  // ── Guardian Management ────────────────────────────────────────────────
+
+  /** GET /auth/admin/users/student/{studentId}/guardians */
+  getStudentGuardians(studentId: string) {
+    return api.get<StudentGuardianDTO[]>(`/auth/admin/users/student/${studentId}/guardians`);
+  },
+
+  /** POST /auth/admin/users/student/{studentId}/guardian */
+  createGuardian(studentId: string, data: CreateGuardianRequestDTO) {
+    return api.post<string>(`/auth/admin/users/student/${studentId}/guardian`, data);
+  },
+
+  /** POST /auth/admin/users/student/{studentId}/guardian/link */
+  linkGuardian(studentId: string, data: LinkGuardianRequestDTO) {
+    return api.post<string>(`/auth/admin/users/student/${studentId}/guardian/link`, data);
+  },
+
+  /** PUT /auth/admin/users/student/{studentId}/guardian/{guardianId} */
+  updateGuardian(studentId: string, guardianId: string, data: UpdateGuardianRequestDTO) {
+    return api.put<string>(`/auth/admin/users/student/${studentId}/guardian/${guardianId}`, data);
+  },
+
+  /** DELETE /auth/admin/users/student/{studentId}/guardian/{guardianId}/unlink */
+  unlinkGuardian(studentId: string, guardianId: string) {
+    return api.delete<string>(`/auth/admin/users/student/${studentId}/guardian/${guardianId}/unlink`);
   },
 };
 
