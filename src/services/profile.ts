@@ -3,6 +3,10 @@ import type {
   UserProfileUpdateDTO,
   UserProfileDTO,
   ComprehensiveUserProfileResponseDTO,
+  AddressDTO,
+  StudentMedicalRecordDTO,
+  StudentMedicalAllergyDTO,
+  GuardianProfileDTO,
 } from "./types/profile";
 import type {
   ImageUploadInitRequest,
@@ -29,7 +33,6 @@ export const profileService = {
   },
 
   completeProfileImageUpload(data: ImageUploadCompleteRequest) {
-    // Assuming backend returns the updated BasicProfileDTO showing the new profileUrl
     return api.post<UserProfileDTO>('/profile/me/image/upload-complete', data);
   },
 
@@ -42,4 +45,56 @@ export const profileService = {
   updateProfileByUserId(userId: number, data: UserProfileUpdateDTO) {
     return api.put<UserProfileDTO>(`/profile/${userId}`, data);
   },
+
+  // ── Address CRUD ───────────────────────────────────────────────────
+
+  /** POST /profile/me/addresses */
+  createMyAddress(data: AddressDTO) {
+    return api.post<AddressDTO>("/profile/me/addresses", data);
+  },
+
+  /** PUT /profile/me/addresses/:id */
+  updateMyAddress(id: number, data: AddressDTO) {
+    return api.put<AddressDTO>(`/profile/me/addresses/${id}`, data);
+  },
+
+  /** DELETE /profile/me/addresses/:id */
+  deleteMyAddress(id: number) {
+    return api.delete<void>(`/profile/me/addresses/${id}`);
+  },
+
+  // ── Medical Records ────────────────────────────────────────────────
+
+  /** PUT /profile/me/medical */
+  updateMyMedical(data: StudentMedicalRecordDTO) {
+    return api.put<StudentMedicalRecordDTO>("/profile/me/medical", data);
+  },
+
+  /** GET /profile/me/medical */
+  getMyMedicalRecord() {
+    return api.get<StudentMedicalRecordDTO>("/profile/me/medical");
+  },
+
+  /** POST /profile/me/medical (create) */
+  createMyMedical(data: StudentMedicalRecordDTO) {
+    return api.post<StudentMedicalRecordDTO>("/profile/me/medical", data);
+  },
+
+  /** POST /profile/me/medical/allergies */
+  addMyAllergy(data: StudentMedicalAllergyDTO) {
+    return api.post<StudentMedicalAllergyDTO>("/profile/me/medical/allergies", data);
+  },
+
+  /** DELETE /profile/me/medical/allergies/:id */
+  deleteMyAllergy(id: number) {
+    return api.delete<void>(`/profile/me/medical/allergies/${id}`);
+  },
+
+  // ── Guardian (View Only) ───────────────────────────────────────────
+
+  /** GET /profile/me/guardians */
+  getMyGuardians() {
+    return api.get<GuardianProfileDTO[]>("/profile/me/guardians");
+  },
 };
+

@@ -1,72 +1,128 @@
-import { useAppSelector, useAppDispatch } from '@/store/hooks'
-import { logoutUser } from '@/store/slices/authSlice'
-import { useNavigate } from 'react-router-dom'
-import { LogOut } from 'lucide-react'
-import { toast } from 'sonner'
+import { useEffect } from "react";
+import { ErrorBoundary } from "react-error-boundary";
+import { motion, type Variants } from "framer-motion";
+import { RefreshCcw, AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { useStudentOverview, overviewKeys } from "@/features/student/dashboard/queries";
+import { useQueryClient } from "@tanstack/react-query";
+import { 
+  KpiRibbonWidget, 
+  DailyRoutineTimelineWidget, 
+  PendingTasksWidget, 
+  PerformanceChartWidget, 
+  NoticeBoardWidget 
+} from "@/features/student/dashboard/components/DashboardWidgets";
+import { DashboardBentoSkeleton } from "@/features/student/dashboard/components/DashboardSkeletons";
 
-export default function StudentDashboard() {
-  const user = useAppSelector((s) => s.auth.user)
-  const auth = useAppSelector((s) => s.auth)
-  const dispatch = useAppDispatch()
-  const navigate = useNavigate()
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.1 } }
+};
 
-  const handleLogout = async () => {
-    await dispatch(logoutUser())
-    navigate('/login', { replace: true })
-    toast.success('Logged out successfully')
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 15 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+};
+
+function ServiceUnreachableState() {
+  return (
+    <div className="h-full border border-rose-500/20 bg-rose-500/5 rounded-xl flex flex-col items-center justify-center p-6 text-center shadow-sm min-h-[250px]">
+      <AlertTriangle className="w-12 h-12 text-rose-500 mb-4 opacity-80" />
+      <h3 className="text-lg font-semibold text-foreground mb-2">Service Unavailable</h3>
+      <p className="text-sm text-muted-foreground">This segment is temporarily unreachable. The rest of your dashboard remains active.</p>
+    </div>
+  );
+}
+
+export default function StudentDashboardPage() {
+  const queryClient = useQueryClient();
+  const { data, isLoading, isError, isFetching } = useStudentOverview();
+
+  // Scroll to top on mount
+  useEffect(() => window.scrollTo(0, 0), []);
+
+  const handleManualRefresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: overviewKeys.all });
+    toast.success("Dashboard synced with latest data", { duration: 2000 });
+  };
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6">
+        <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center mb-6">
+          <AlertTriangle className="w-8 h-8 text-rose-600 dark:text-rose-400" />
+        </div>
+        <h2 className="text-2xl font-bold tracking-tight mb-3">Unable to Load Dashboard</h2>
+        <p className="text-muted-foreground mb-8 max-w-md">We couldn't connect to the student intelligence matrix. Please check your connection and try again.</p>
+        <Button onClick={handleManualRefresh} size="lg" className="shadow-sm">
+          <RefreshCcw className="mr-2 h-4 w-4" /> Try Again
+        </Button>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-100 p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          <div className="flex justify-end mb-4">
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium"
-            >
-              <LogOut className="w-4 h-4" />
-              Logout
-            </button>
-          </div>
-          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded">
-            <p className="text-sm text-yellow-800">Debug Info:</p>
-            <p className="text-xs text-yellow-700 font-mono">isAuthenticated: {String(auth.isAuthenticated)}</p>
-            <p className="text-xs text-yellow-700 font-mono">user: {user?.username || 'null'}</p>
-            <p className="text-xs text-yellow-700 font-mono">roles: {user?.roles.join(', ') || 'none'}</p>
-          </div>
-
-          <h1 className="text-4xl font-bold text-purple-900 mb-2">Student Learning Hub</h1>
-          <p className="text-purple-700 mb-6">Access your courses and learning materials</p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-            <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-purple-900 mb-3">Learning Resources</h2>
-              <ul className="text-purple-700 space-y-2">
-                <li>✓ My Courses</li>
-                <li>✓ Assignments</li>
-                <li>✓ Grades</li>
-                <li>✓ Learning Materials</li>
-              </ul>
-            </div>
-
-            <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-purple-900 mb-3">User Information</h2>
-              <div className="text-purple-700 space-y-2">
-                <p><strong>Name:</strong> {user?.username}</p>
-                <p><strong>Email:</strong> {user?.email}</p>
-                <p><strong>ID:</strong> {user?.userId}</p>
-                <p><strong>Roles:</strong> {user?.roles.join(', ')}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8 p-4 bg-purple-100 border-l-4 border-purple-500 text-purple-900">
-            <p className="font-semibold">Welcome to Student Dashboard</p>
-            <p className="text-sm mt-2">Access your courses, view assignments, and track your learning progress.</p>
-          </div>
-        </div>
+    <div className="max-w-[1600px] mx-auto space-y-6 pb-12 pt-4 px-2 sm:px-4">
+      {/* Top Utility Bar */}
+      <div className="flex justify-end items-center">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleManualRefresh} 
+          disabled={isFetching || isLoading}
+          className="text-muted-foreground hover:text-foreground shadow-sm bg-background"
+        >
+          <RefreshCcw className={`mr-2 h-4 w-4 ${(isFetching || isLoading) ? "animate-spin" : ""}`} />
+          {(isFetching || isLoading) ? "Syncing..." : "Refresh Pulse"}
+        </Button>
       </div>
+
+      {isLoading && !data ? (
+        <DashboardBentoSkeleton />
+      ) : (
+        <motion.div 
+          className="space-y-6"
+          variants={containerVariants}
+          initial="hidden"
+          animate="show"
+        >
+          {/* ROW 1: Ribbon */}
+          <motion.div variants={itemVariants}>
+            <KpiRibbonWidget profile={data?.profile} kpis={data?.kpis} />
+          </motion.div>
+
+          {/* ROW 2: execution & Deadlines */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <motion.div variants={itemVariants} className="lg:col-span-8 h-full">
+              <ErrorBoundary fallback={<ServiceUnreachableState />}>
+                <DailyRoutineTimelineWidget schedule={data?.todaySchedule} />
+              </ErrorBoundary>
+            </motion.div>
+            
+            <motion.div variants={itemVariants} className="lg:col-span-4 h-full">
+              <ErrorBoundary fallback={<ServiceUnreachableState />}>
+                <PendingTasksWidget assignments={data?.pendingAssignments} />
+              </ErrorBoundary>
+            </motion.div>
+          </div>
+
+          {/* ROW 3: Analytics & Communications */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <motion.div variants={itemVariants} className="lg:col-span-7 h-full">
+              <ErrorBoundary fallback={<ServiceUnreachableState />}>
+                <PerformanceChartWidget trends={data?.performanceTrend} />
+              </ErrorBoundary>
+            </motion.div>
+
+            <motion.div variants={itemVariants} className="lg:col-span-5 h-full">
+              <ErrorBoundary fallback={<ServiceUnreachableState />}>
+                <NoticeBoardWidget notices={data?.recentAnnouncements} />
+              </ErrorBoundary>
+            </motion.div>
+          </div>
+        </motion.div>
+      )}
     </div>
-  )
+  );
 }
