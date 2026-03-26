@@ -3,14 +3,14 @@ import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import { cn } from "@/lib/utils";
-import { ADMIN_NAV_ITEMS } from "@/config/navigation";
+import { STUDENT_NAV_ITEMS } from "@/config/navigation";
 
-export default function AdminLayout() {
+export default function StudentLayout() {
   const [collapsed, setCollapsed] = useState(true);
 
   return (
-    <div className="min-h-screen bg-background">
-      <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} navItems={ADMIN_NAV_ITEMS} />
+    <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+      <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} navItems={STUDENT_NAV_ITEMS} />
 
       <div
         className={cn(
@@ -20,7 +20,7 @@ export default function AdminLayout() {
       >
         <Topbar />
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-x-hidden p-6 md:p-8">
           <Outlet />
         </main>
       </div>

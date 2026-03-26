@@ -9,9 +9,14 @@ import AdminOverview from '@/pages/dashboard/admin/page'
 import StudentsPage from '@/pages/dashboard/admin/students/page'
 import StaffPage from '@/pages/dashboard/admin/staff/page'
 import SettingsPage from '@/pages/dashboard/admin/settings/page'
+import AdminTimetablePage from '@/pages/dashboard/admin/timetable/page'
+import AdminTimetableEditorPage from '@/pages/dashboard/admin/timetable/editor/page'
 import UserDetailsPage from '@/pages/dashboard/admin/users/[id]/page'
+import CurriculumPage from '@/pages/dashboard/admin/curriculum/page'
 import TeacherDashboard from '@/pages/dashboard/teacher/page'
 import StudentDashboard from '@/pages/dashboard/student/page'
+import StudentProfilePage from '@/pages/dashboard/student/profile/page'
+import StudentLayout from '@/components/layout/StudentLayout'
 import { GuestOnly } from '@/routes/GuestOnly'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { RoleBasedRoute } from '@/routes/RoleBasedRoute'
@@ -68,6 +73,9 @@ export default function App() {
           <Route path="students" element={<StudentsPage />} />
           <Route path="staff" element={<StaffPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="timetable" element={<AdminTimetablePage />} />
+          <Route path="timetable/editor" element={<AdminTimetableEditorPage />} />
+          <Route path="curriculum" element={<CurriculumPage />} />
           <Route path="users/:type/:id" element={<UserDetailsPage />} />
           {/* Catch-all for unknown admin sub-routes */}
           <Route path="*" element={<Navigate to="/dashboard/admin" replace />} />
@@ -91,11 +99,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <RoleBasedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'TEACHER', 'STUDENT']}>
-                <StudentDashboard />
+                <StudentLayout />
               </RoleBasedRoute>
             </ProtectedRoute>
           }
-        />
+        >
+          <Route index element={<StudentDashboard />} />
+          <Route path="profile" element={<StudentProfilePage />} />
+        </Route>
 
         {/* Redirect all unknown routes to home (which will redirect to login if not authenticated) */}
         <Route path="*" element={<Navigate to="/" replace />} />

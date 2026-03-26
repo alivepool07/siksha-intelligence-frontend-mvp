@@ -1,10 +1,5 @@
-import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard,
-  GraduationCap,
-  Users,
-  Settings,
   ChevronLeft,
   ChevronRight,
   BookOpen,
@@ -12,28 +7,15 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-const navItems = [
-  {
-    label: "Dashboard",
-    path: "/dashboard/admin",
-    icon: LayoutDashboard,
-    end: true,
-  },
-  {
-    label: "Students",
-    path: "/dashboard/admin/students",
-    icon: GraduationCap,
-  },
-  { label: "Staff", path: "/dashboard/admin/staff", icon: Users },
-  { label: "Settings", path: "/dashboard/admin/settings", icon: Settings },
-];
+import type { NavItem } from "@/config/navigation";
 
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  navItems: NavItem[];
 }
 
-export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export default function Sidebar({ collapsed, onToggle, navItems }: SidebarProps) {
   const location = useLocation();
 
   return (
