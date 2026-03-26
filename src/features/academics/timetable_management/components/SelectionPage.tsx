@@ -29,14 +29,14 @@ export function SelectionPage() {
         if (selectedClassData && selectedSectionData) {
             dispatch(setSelectedClass(selectedClassData));
             dispatch(setSelectedSection(selectedSectionData));
-            navigate('/timetable/editor');
+            navigate('/dashboard/admin/timetable/editor');
         }
     };
 
     const isFormValid = selectedClassId && selectedSectionId;
 
     return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
+        <div className="w-full flex items-center justify-center p-4 min-h-[calc(100vh-10rem)] animate-in fade-in duration-500">
             <motion.div
                 initial={{ opacity: 0, y: 20, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}

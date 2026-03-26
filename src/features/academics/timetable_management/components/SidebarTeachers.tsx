@@ -1,12 +1,18 @@
 import { motion } from 'framer-motion';
 import { useSelector } from 'react-redux';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { DraggableTeacher } from './DraggableTeacher';
-import { initialTeachers } from '../data/mockData';
 import type { RootState } from '@/store/store';
 import { Users } from 'lucide-react';
+import type { Teacher } from '../types';
 
-export function SidebarTeachers() {
+interface SidebarTeachersProps {
+    teachers: Teacher[];
+    isLoading: boolean;
+}
+
+export function SidebarTeachers({ teachers, isLoading }: SidebarTeachersProps) {
     const { activeCell, grid } = useSelector((state: RootState) => state.timetable);
 
     // Get the subject ID of the active cell (if any)
@@ -14,15 +20,14 @@ export function SidebarTeachers() {
     const activeSubjectId = activeCellData?.subject?._id || null;
 
     // Filter teachers based on whether they can teach the active subject
-    const getTeacherState = (teacherId: string) => {
-        const teacher = initialTeachers.find(t => t._id === teacherId);
-        if (!teacher || !activeSubjectId) return { isEnabled: false };
+    const getTeacherState = (teacher: Teacher) => {
+        if (!activeSubjectId) return { isEnabled: false };
         return {
             isEnabled: teacher.teachableSubjects.includes(activeSubjectId),
         };
     };
 
-    const enabledCount = initialTeachers.filter(
+    const enabledCount = teachers.filter(
         t => activeSubjectId && t.teachableSubjects.includes(activeSubjectId)
     ).length;
 
@@ -34,30 +39,37 @@ export function SidebarTeachers() {
                     Teachers
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">
-                    {activeSubjectId
-                        ? `${enabledCount} teacher${enabledCount !== 1 ? 's' : ''} available`
-                        : 'Select a cell with subject first'
+                    {isLoading
+                        ? 'Loading...'
+                        : activeSubjectId
+                            ? `${enabledCount} teacher${enabledCount !== 1 ? 's' : ''} available`
+                            : 'Select a cell with subject first'
                     }
                 </p>
             </CardHeader>
             <CardContent className="space-y-2 overflow-y-auto max-h-[calc(100vh-200px)]">
-                {initialTeachers.map((teacher, index) => {
-                    const { isEnabled } = getTeacherState(teacher._id);
-                    return (
-                        <motion.div
-                            key={teacher._id}
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: index * 0.05 }}
-                        >
-                            <DraggableTeacher
-                                teacher={teacher}
-                                isEnabled={isEnabled}
-                                targetCellKey={activeCell}
-                            />
-                        </motion.div>
-                    );
-                })}
+                {isLoading
+                    ? Array.from({ length: 5 }).map((_, i) => (
+                        <Skeleton key={i} className="h-12 w-full rounded-lg" />
+                    ))
+                    : teachers.map((teacher, index) => {
+                        const { isEnabled } = getTeacherState(teacher);
+                        return (
+                            <motion.div
+                                key={teacher._id}
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: index * 0.05 }}
+                            >
+                                <DraggableTeacher
+                                    teacher={teacher}
+                                    isEnabled={isEnabled}
+                                    targetCellKey={activeCell}
+                                />
+                            </motion.div>
+                        );
+                    })
+                }
             </CardContent>
         </Card>
     );

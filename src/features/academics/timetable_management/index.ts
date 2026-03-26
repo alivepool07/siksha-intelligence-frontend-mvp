@@ -1,6 +1,7 @@
 // Timetable Management Feature - Barrel Exports
 
 // Components
+export { TimetableDashboard } from './components/TimetableDashboard';
 export { SelectionPage } from './components/SelectionPage';
 export { TimetableEditor } from './components/TimetableEditor';
 export { SidebarSubjects } from './components/SidebarSubjects';

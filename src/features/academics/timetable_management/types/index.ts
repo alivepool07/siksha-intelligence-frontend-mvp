@@ -95,3 +95,89 @@ export interface AutoGenerateErrorResponse {
 
 export type AutoGenerateResponse = AutoGenerateSuccessResponse | AutoGenerateErrorResponse;
 
+// Backend API DTOs
+export interface TimetableOverviewDto {
+    classId: string;
+    className: string;
+    sectionId: string;
+    sectionName: string;
+    scheduleStatus: "PUBLISHED" | "DRAFT" | "MISSING";
+    totalPeriods: number;
+    createdAt?: string;
+    lastUpdatedAt?: string;
+}
+
+export interface ScheduleRequestDto {
+    sectionId: string;
+    subjectId: string;
+    teacherId: string; // Serialized as String from backend (Long via @JsonSerialize)
+    roomId: string;
+    timeslotId: string;
+}
+
+export interface ScheduleResponseDto {
+    uuid: string;
+    section: {
+        uuid: string;
+        sectionName: string;
+        className: string;
+    };
+    subject: {
+        uuid: string;
+        name: string;
+        subjectCode: string;
+    };
+    teacher: {
+        id: string; // String serialized Long
+        name: string;
+    };
+    room: {
+        uuid: string;
+        name: string;
+        roomType?: string;
+    };
+    timeslot: {
+        uuid: string;
+        dayOfWeek: number;
+        startTime: string;
+        endTime: string;
+        slotLabel: string; // e.g. "Monday_08:00" — added by backend team
+    };
+}
+
+// New Editor Context Aggregate DTO (from GET /sections/{sectionId}/editor-context)
+export interface EditorContextDto {
+    section: {
+        uuid: string;
+        sectionName: string;
+        className: string;
+    };
+    timeslots: Array<{
+        uuid: string;
+        dayOfWeek: number;
+        startTime: string;
+        endTime: string;
+        slotLabel: string;
+        isBreak: boolean;
+    }>;
+    availableSubjects: Array<{
+        uuid: string;
+        name: string;
+        subjectCode: string;
+        color?: string;
+    }>;
+    teachers: Array<{
+        id: string;
+        name: string;
+        teachableSubjectIds: string[];
+    }>;
+    existingSchedule: Array<{
+        uuid: string;
+        subjectId: string;
+        teacherId: string;
+        roomId: string;
+        timeslotId: string;
+        slotLabel: string;
+    }>;
+}
+

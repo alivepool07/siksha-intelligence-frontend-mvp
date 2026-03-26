@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
@@ -18,10 +18,11 @@ import { TimetableGrid } from './TimetableGrid';
 import { AutoGenerateModal } from './AutoGenerateModal';
 import { setSubjectToCell, setTeacherToCell, resetGrid } from '../store/timetableSlice';
 import { generateTimetable } from '../services/autoGenerateService';
-import { initialSubjects, initialTeachers } from '../data/mockData';
 import type { RootState } from '@/store/store';
-import type { Subject, Teacher, LLMTeacher, GeneratedTimetable } from '../types';
+import type { Subject, Teacher, LLMTeacher, GeneratedTimetable, ScheduleRequestDto } from '../types';
+import { useBulkUpdateSchedule, useUpdateScheduleStatus, useGetEditorContext } from '../queries/useTimetableQueries';
 import { ArrowLeft, Save, Send, RotateCcw, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
 
 export function TimetableEditor() {
     const navigate = useNavigate();
@@ -35,6 +36,71 @@ export function TimetableEditor() {
     const [isAutoGenerateModalOpen, setIsAutoGenerateModalOpen] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [autoGenerateError, setAutoGenerateError] = useState<string | null>(null);
+    // Track whether we've already hydrated the grid for this section (prevents duplicate hydration)
+    const [hydratedSectionId, setHydratedSectionId] = useState<string | null>(null);
+
+    // ─── Live API ─────────────────────────────────────────────────────────────
+    const { data: editorContext, isLoading: isContextLoading } = useGetEditorContext(selectedSection?._id);
+    const { mutate: bulkUpdate, isPending: isSavingData } = useBulkUpdateSchedule();
+    const { mutate: updateStatus, isPending: isUpdatingStatus } = useUpdateScheduleStatus();
+
+    const isSaving = isSavingData || isUpdatingStatus;
+
+    // ─── Map API data → local Subject/Teacher types for Sidebars ─────────────
+    const liveSubjects: Subject[] = useMemo(() => {
+        if (!editorContext?.availableSubjects) return [];
+        return editorContext.availableSubjects.map(s => ({
+            _id: s.uuid,
+            name: s.name,
+            code: s.subjectCode,
+            color: s.color || 'bg-blue-100 border-blue-200 text-blue-800',
+        }));
+    }, [editorContext?.availableSubjects]);
+
+    const liveTeachers: Teacher[] = useMemo(() => {
+        if (!editorContext?.teachers) return [];
+        return editorContext.teachers.map(t => ({
+            _id: t.id,
+            name: t.name,
+            teachableSubjects: t.teachableSubjectIds,
+        }));
+    }, [editorContext?.teachers]);
+
+    // ─── Hydrate Grid from Existing Schedule ──────────────────────────────────
+    useEffect(() => {
+        if (
+            editorContext &&
+            editorContext.existingSchedule.length > 0 &&
+            selectedSection?._id &&
+            hydratedSectionId !== selectedSection._id
+        ) {
+            dispatch(resetGrid());
+            setHydratedSectionId(selectedSection._id);
+
+            setTimeout(() => {
+                editorContext.existingSchedule.forEach((entry) => {
+                    const cellKey = entry.slotLabel; // e.g. "Monday_08:00"
+
+                    const subject = liveSubjects.find(s => s._id === entry.subjectId);
+                    const teacher = liveTeachers.find(t => t._id === entry.teacherId);
+
+                    if (cellKey && subject) {
+                        dispatch(setSubjectToCell({ cellKey, subject }));
+                        if (teacher) {
+                            dispatch(setTeacherToCell({ cellKey, teacher }));
+                        }
+                    }
+                });
+            }, 50);
+        }
+    }, [editorContext, liveSubjects, liveTeachers, selectedSection?._id, hydratedSectionId, dispatch]);
+
+    // Reset hydration tracking when section changes
+    useEffect(() => {
+        if (selectedSection?._id && hydratedSectionId !== selectedSection._id) {
+            dispatch(resetGrid());
+        }
+    }, [selectedSection?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -66,78 +132,100 @@ export function TimetableEditor() {
         const { type, item, targetCellKey } = dragData;
         const { cellKey, status } = dropData;
 
-        // Handle subject drop to empty cell
         if (type === 'SUBJECT' && status === 'EMPTY') {
             dispatch(setSubjectToCell({ cellKey, subject: item as Subject }));
         }
 
-        // Handle teacher drop to cell awaiting teacher
         if (type === 'TEACHER' && status === 'AWAITING_TEACHER') {
-            // Verify the teacher is being dropped on the correct target cell
             if (targetCellKey === cellKey) {
                 dispatch(setTeacherToCell({ cellKey, teacher: item as Teacher }));
             }
         }
     }, [dispatch]);
 
+    // ─── Build Payload for Bulk Save ──────────────────────────────────────────
+    const generatePayload = (): ScheduleRequestDto[] => {
+        if (!selectedSection || !editorContext) return [];
+
+        // Build a lookup for slotLabel → timeslot UUID from the context
+        const slotToTimeslotId: Record<string, string> = {};
+        editorContext.timeslots.forEach(ts => {
+            slotToTimeslotId[ts.slotLabel] = ts.uuid;
+        });
+
+        const payload: ScheduleRequestDto[] = [];
+        Object.entries(grid).forEach(([slotLabel, value]) => {
+            if (value.status === 'LOCKED' && value.subject && value.teacher) {
+                const timeslotId = slotToTimeslotId[slotLabel];
+                if (!timeslotId) return; // Skip if timeslot not found
+
+                payload.push({
+                    sectionId: selectedSection._id,
+                    subjectId: value.subject._id,
+                    teacherId: value.teacher._id,
+                    roomId: 'default-lab', // Room selection is a future feature
+                    timeslotId,
+                });
+            }
+        });
+        return payload;
+    };
+
     const handleSaveDraft = () => {
-        const payload = {
-            class: selectedClass,
-            section: selectedSection,
-            grid: Object.entries(grid).reduce((acc, [key, value]) => {
-                if (value.status !== 'EMPTY') {
-                    acc[key] = value;
+        if (!selectedSection) return;
+        const payload = generatePayload();
+        if (payload.length === 0) {
+            toast.warning('No completed periods to save. Assign both a subject and teacher to at least one cell.');
+            return;
+        }
+        bulkUpdate(
+            { sectionId: selectedSection._id, payload },
+            {
+                onSuccess: () => {
+                    updateStatus({ sectionId: selectedSection._id, statusType: 'draft' });
                 }
-                return acc;
-            }, {} as typeof grid),
-        };
-        console.log('Save Draft Payload:', payload);
-        alert('Draft saved! Check console for payload.');
+            }
+        );
     };
 
     const handlePublish = () => {
-        const payload = {
-            class: selectedClass,
-            section: selectedSection,
-            grid: Object.entries(grid).reduce((acc, [key, value]) => {
-                if (value.status !== 'EMPTY') {
-                    acc[key] = value;
+        if (!selectedSection) return;
+        const payload = generatePayload();
+        if (payload.length === 0) {
+            toast.warning('No completed periods to publish. Assign both a subject and teacher to at least one cell.');
+            return;
+        }
+        bulkUpdate(
+            { sectionId: selectedSection._id, payload },
+            {
+                onSuccess: () => {
+                    updateStatus({ sectionId: selectedSection._id, statusType: 'publish' });
                 }
-                return acc;
-            }, {} as typeof grid),
-        };
-        console.log('Publish Payload:', payload);
-        alert('Timetable published! Check console for payload.');
+            }
+        );
     };
 
     const handleReset = () => {
         if (window.confirm('Are you sure you want to reset the timetable? All changes will be lost.')) {
             dispatch(resetGrid());
+            setHydratedSectionId(null); // Allow re-hydration if user doesn't save
         }
     };
 
-    // Helper to find subject by name
-    const findSubjectByName = (name: string): Subject | undefined => {
-        return initialSubjects.find(s => s.name.toLowerCase() === name.toLowerCase());
-    };
+    // ─── Auto Generate ─────────────────────────────────────────────────────────
+    const findSubjectByName = (name: string): Subject | undefined =>
+        liveSubjects.find(s => s.name.toLowerCase() === name.toLowerCase());
 
-    // Helper to find teacher by name
-    const findTeacherByName = (name: string): Teacher | undefined => {
-        return initialTeachers.find(t => t.name.toLowerCase() === name.toLowerCase());
-    };
+    const findTeacherByName = (name: string): Teacher | undefined =>
+        liveTeachers.find(t => t.name.toLowerCase() === name.toLowerCase());
 
-    // Animate filling the grid with LLM response
     const animateFillGrid = async (timetable: GeneratedTimetable) => {
         const days: (keyof GeneratedTimetable)[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const timeSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00'];
 
-        // First reset the grid
         dispatch(resetGrid());
-
-        // Wait a moment for reset animation
         await new Promise(resolve => setTimeout(resolve, 300));
 
-        // Iterate through each day and period with animation delay
         for (const day of days) {
             const periods = timetable[day];
             if (!periods) continue;
@@ -153,12 +241,10 @@ export function TimetableEditor() {
                 const teacher = findTeacherByName(periodData.teacher);
 
                 if (subject) {
-                    // First add subject with animation
                     dispatch(setSubjectToCell({ cellKey, subject }));
                     await new Promise(resolve => setTimeout(resolve, 100));
 
                     if (teacher) {
-                        // Then add teacher with animation
                         dispatch(setTeacherToCell({ cellKey, teacher }));
                         await new Promise(resolve => setTimeout(resolve, 100));
                     }
@@ -167,19 +253,17 @@ export function TimetableEditor() {
         }
     };
 
-    // Handle auto generate
     const handleAutoGenerate = async (query: string) => {
         setIsGenerating(true);
         setAutoGenerateError(null);
 
         try {
-            // Transform subjects and teachers for LLM API
-            const subjects = initialSubjects.map(s => s.name);
-            const teachers: LLMTeacher[] = initialTeachers.map(t => ({
+            const subjects = liveSubjects.map(s => s.name);
+            const teachers: LLMTeacher[] = liveTeachers.map(t => ({
                 name: t.name,
                 subjects: t.teachableSubjects.map(subId => {
-                    const subject = initialSubjects.find(s => s._id === subId);
-                    return subject?.name || '';
+                    const sub = liveSubjects.find(s => s._id === subId);
+                    return sub?.name || '';
                 }).filter(Boolean),
             }));
 
@@ -191,18 +275,16 @@ export function TimetableEditor() {
             });
 
             if (response.success) {
-                // Close modal and animate grid filling
                 setIsAutoGenerateModalOpen(false);
                 await animateFillGrid(response.timetable);
             } else {
-                // Show error in modal
                 if (response.error.includes('constraint') || response.error.includes('cannot be satisfied')) {
                     setAutoGenerateError(`Timetable cannot be created with these constraints: ${response.error}. Please try with different constraints or create the timetable manually.`);
                 } else {
                     setAutoGenerateError(response.error);
                 }
             }
-        } catch (error) {
+        } catch {
             setAutoGenerateError('Cannot generate timetable due to some error. Please try again later.');
         } finally {
             setIsGenerating(false);
@@ -221,20 +303,20 @@ export function TimetableEditor() {
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
         >
-            <div className="min-h-screen bg-background">
+            <div className="flex flex-col gap-6 w-full animate-in fade-in duration-500">
                 {/* Header */}
                 <motion.header
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border"
+                    className="z-10 bg-card rounded-xl border border-border shadow-sm"
                 >
-                    <div className="container mx-auto px-4 py-3">
+                    <div className="px-6 py-4">
                         <div className="flex items-center justify-between gap-4">
                             <div className="flex items-center gap-4">
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => navigate('/timetable')}
+                                    onClick={() => navigate('/dashboard/admin/timetable')}
                                     className="shrink-0"
                                 >
                                     <ArrowLeft className="w-5 h-5" />
@@ -244,7 +326,12 @@ export function TimetableEditor() {
                                         Timetable Editor
                                     </h1>
                                     <p className="text-sm text-muted-foreground">
-                                        {selectedClass?.name || 'Class'} - {selectedSection?.name || 'Section'}
+                                        {selectedClass?.name || 'Class'} — {selectedSection?.name || 'Section'}
+                                        {editorContext && (
+                                            <span className="ml-2 text-xs text-primary font-medium">
+                                                ({editorContext.existingSchedule.length} periods loaded)
+                                            </span>
+                                        )}
                                     </p>
                                 </div>
                             </div>
@@ -253,6 +340,7 @@ export function TimetableEditor() {
                                 <Button
                                     size="sm"
                                     onClick={openAutoGenerateModal}
+                                    disabled={isContextLoading || !editorContext}
                                     className="ai-glow-button gap-2"
                                 >
                                     <Sparkles className="w-4 h-4" />
@@ -271,18 +359,20 @@ export function TimetableEditor() {
                                     variant="outline"
                                     size="sm"
                                     onClick={handleSaveDraft}
+                                    disabled={!selectedSection || isSaving || isContextLoading}
                                     className="gap-2"
                                 >
                                     <Save className="w-4 h-4" />
-                                    Save Draft
+                                    {isSaving ? 'Saving...' : 'Save Draft'}
                                 </Button>
                                 <Button
                                     size="sm"
                                     onClick={handlePublish}
+                                    disabled={!selectedSection || isSaving || isContextLoading}
                                     className="gap-2"
                                 >
                                     <Send className="w-4 h-4" />
-                                    Publish
+                                    {isSaving ? 'Publishing...' : 'Publish'}
                                 </Button>
                             </div>
                         </div>
@@ -290,15 +380,15 @@ export function TimetableEditor() {
                 </motion.header>
 
                 {/* Main Content - 3 Column Layout */}
-                <div className="container mx-auto px-4 py-6">
-                    <div className="grid grid-cols-[260px_1fr_260px] gap-6 min-h-[calc(100vh-120px)]">
-                        {/* Left Sidebar - Subjects */}
+                <div className="w-full">
+                    <div className="grid xl:grid-cols-[260px_1fr_260px] lg:grid-cols-[220px_1fr_220px] grid-cols-1 gap-6">
+                        {/* Left Sidebar - Subjects (live from API) */}
                         <motion.aside
                             initial={{ opacity: 0, x: -30 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: 0.1 }}
                         >
-                            <SidebarSubjects />
+                            <SidebarSubjects subjects={liveSubjects} isLoading={isContextLoading} />
                         </motion.aside>
 
                         {/* Center - Timetable Grid */}
@@ -311,13 +401,13 @@ export function TimetableEditor() {
                             <TimetableGrid />
                         </motion.main>
 
-                        {/* Right Sidebar - Teachers */}
+                        {/* Right Sidebar - Teachers (live from API) */}
                         <motion.aside
                             initial={{ opacity: 0, x: 30 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: 0.1 }}
                         >
-                            <SidebarTeachers />
+                            <SidebarTeachers teachers={liveTeachers} isLoading={isContextLoading} />
                         </motion.aside>
                     </div>
                 </div>
