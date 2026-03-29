@@ -18,9 +18,9 @@ import { TimetableGrid } from './TimetableGrid';
 import { AutoGenerateModal } from './AutoGenerateModal';
 import { CellEditDialog } from './CellEditDialog';
 import { setSubjectToCell, setTeacherToCell, resetGrid, setSelectedClass, setSelectedSection } from '../store/timetableSlice';
-import { generateTimetable } from '../services/autoGenerateService';
+
 import type { RootState } from '@/store/store';
-import type { Subject, Teacher, LLMTeacher, GeneratedTimetable, ScheduleRequestDto } from '../types';
+import type { Subject, Teacher, GeneratedTimetable, ScheduleRequestDto } from '../types';
 import { 
     useBulkUpdateSchedule, 
     useUpdateScheduleStatus, 
