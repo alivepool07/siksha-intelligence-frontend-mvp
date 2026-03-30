@@ -90,12 +90,39 @@ interface ParsedCsvResult {
     globalError?: string;
 }
 
+/** Correctly parses a single CSV line, handling quoted fields and escaped quotes */
+function parseCSVLine(line: string): string[] {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+                // Escaped quote inside quoted field
+                current += '"';
+                i++;
+            } else {
+                inQuotes = !inQuotes;
+            }
+        } else if (char === ',' && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    result.push(current.trim());
+    return result;
+}
+
 function parseCsvText(text: string): ParsedCsvResult {
     const lines = text.split(/\r?\n/).filter(l => l.trim());
     if (lines.length < 2) return { headers: [], rows: [], globalError: 'CSV must have a header row and at least one data row.' };
 
-    // Parse headers
-    const rawHeaders = lines[0].split(',').map(h => h.replace(/^"|"$/g, '').trim().toLowerCase());
+    // Parse headers using the same robust parser
+    const rawHeaders = parseCSVLine(lines[0]).map(h => h.toLowerCase());
     const missingHeaders = ROOM_CSV_HEADERS.filter(h => !rawHeaders.includes(h.toLowerCase()));
     if (missingHeaders.length > 0) {
         return { headers: rawHeaders, rows: [], globalError: `Missing required columns: ${missingHeaders.join(', ')}` };
@@ -104,7 +131,7 @@ function parseCsvText(text: string): ParsedCsvResult {
     const rows: ParsedRoomRow[] = [];
 
     for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].match(/("(?:[^"]|"")*"|[^,]*)/g)?.map(c => c.replace(/^"|"$/g, '').replace(/""/g, '"').trim()) ?? [];
+        const cols = parseCSVLine(lines[i]);
         const rowData: Record<string, string> = {};
         rawHeaders.forEach((h, idx) => { rowData[h] = cols[idx] ?? ''; });
 
