@@ -31,7 +31,7 @@ export function SelectionPage() {
 
         if (selectedClassData && selectedSectionData) {
             dispatch(setSelectedClass({ _id: selectedClassData.uuid, name: selectedClassData.name }));
-            dispatch(setSelectedSection({ _id: selectedSectionData.uuid, name: selectedSectionData.sectionName }));
+            dispatch(setSelectedSection({ _id: selectedSectionData.uuid, name: selectedSectionData.sectionName, defaultRoom: selectedSectionData.defaultRoom }));
             navigate(`/dashboard/admin/timetable/editor/${selectedClassData.uuid}/${selectedSectionData.uuid}`);
         }
     };

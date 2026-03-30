@@ -35,7 +35,7 @@ export function TimetableReader() {
     useEffect(() => {
         if (context?.section && (!selectedSection || !selectedClass)) {
             dispatch(setSelectedClass({ _id: classId || '', name: context.section.className }));
-            dispatch(setSelectedSection({ _id: sectionId || '', name: context.section.sectionName }));
+            dispatch(setSelectedSection({ _id: sectionId || '', name: context.section.sectionName, defaultRoom: context.section.defaultRoom }));
         }
     }, [context?.section, selectedSection, selectedClass, dispatch, classId, sectionId]);
 
@@ -100,7 +100,7 @@ export function TimetableReader() {
                             code: subject.subjectCode,
                             color: subject.color 
                         } as any,
-                        roomId: entry.roomId
+                        roomId: entry.roomId || null
                     }));
                     
                     dispatch(setTeacherToCell({ 

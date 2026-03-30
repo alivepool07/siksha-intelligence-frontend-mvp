@@ -67,17 +67,9 @@ export function TimetableGrid({ readOnly = false, sectionId, rooms = [], onEditC
 
     timeSlotObjects.sort((a, b) => a.start.localeCompare(b.start));
 
-    // --- Identify MUST-SHOW room vs Common Room ---
-    // Rule: Count frequency of roomIds in the grid. The most frequent one is the "Main Classroom"
-    const roomFrequencies = Object.values(grid).reduce((acc, cell) => {
-        if (cell.roomId && cell.subject?._id !== 'break') {
-            acc[cell.roomId] = (acc[cell.roomId] || 0) + 1;
-        }
-        return acc;
-    }, {} as Record<string, number>);
-
-    const commonRoomId = Object.entries(roomFrequencies).reduce((a, b) => b[1] > a[1] ? b : a, ['', 0] as [string, number])[0];
-    const commonRoomName = rooms.find(r => r.uuid === commonRoomId)?.name;
+    // Use the backend-provided default room for this section
+    const commonRoomId = selectedSection?.defaultRoom?.uuid || '';
+    const commonRoomName = selectedSection?.defaultRoom?.name;
 
     if (isLoading) {
         return (
