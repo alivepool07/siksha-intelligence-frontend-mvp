@@ -4,12 +4,14 @@ import type { NestedRoomResponseDto } from "./types/academics";
 
 export interface AcademicClassResponseDto {
   classId: string;
+  id?: number;
   name: string;
   sections: SectionResponseDto[];
 }
 
 export interface SectionResponseDto {
   uuid: string;
+  id?: number;
   sectionName: string;
   defaultRoom?: NestedRoomResponseDto;
 }

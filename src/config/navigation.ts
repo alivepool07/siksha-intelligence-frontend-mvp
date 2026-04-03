@@ -16,6 +16,13 @@ import {
 
   Clock,
   DoorOpen,
+  Shield,
+  Activity,
+  ClipboardList,
+  Terminal,
+  Settings2,
+  Lock,
+  CreditCard,
 } from "lucide-react";
 
 export type NavItem = {
@@ -47,6 +54,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { label: "Rooms", path: "/dashboard/admin/rooms", icon: DoorOpen },
 
   { label: "Settings", path: "/dashboard/admin/settings", icon: Settings },
+  { label: "ID Cards", path: "/dashboard/admin/id-cards", icon: CreditCard },
 ];
 
 export const STUDENT_NAV_ITEMS: NavItem[] = [
@@ -86,4 +94,20 @@ export const STUDENT_NAV_ITEMS: NavItem[] = [
     path: "/dashboard/student/notices",
     icon: Bell,
   },
+];
+
+export const SUPER_ADMIN_NAV_ITEMS: NavItem[] = [
+  {
+    label: "Overview",
+    path: "/dashboard/super-admin",
+    icon: LayoutDashboard,
+    end: true,
+  },
+  { label: "Users",         path: "/dashboard/super-admin/users",          icon: Users },
+  { label: "Roles & RBAC",  path: "/dashboard/super-admin/rbac",           icon: Shield },
+  { label: "System Health", path: "/dashboard/super-admin/health",         icon: Activity },
+  { label: "Audit Logs",    path: "/dashboard/super-admin/audit-logs",     icon: ClipboardList },
+  { label: "App Logs",      path: "/dashboard/super-admin/logs",           icon: Terminal },
+  { label: "Configuration", path: "/dashboard/super-admin/configuration",  icon: Settings2 },
+  { label: "Security",      path: "/dashboard/super-admin/security",       icon: Lock },
 ];

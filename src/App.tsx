@@ -3,7 +3,6 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Toaster } from '@/components/ui/sonner'
 import LoginPage from '@/features/auth/LoginPage'
 import HomePage from '@/pages/HomePage'
-import SuperAdminDashboard from '@/pages/dashboard/super-admin/page'
 import AdminLayout from '@/components/layout/AdminLayout'
 import AdminOverview from '@/pages/dashboard/admin/page'
 import StudentsPage from '@/pages/dashboard/admin/students/page'
@@ -20,6 +19,7 @@ import ExaminationsPage from '@/pages/dashboard/admin/examinations/page'
 
 import AdminRoomsPage from '@/pages/dashboard/admin/rooms/page'
 
+import IdCardsPage from '@/pages/dashboard/admin/id-cards/page'
 import TeacherDashboard from '@/pages/dashboard/teacher/page'
 import StudentDashboard from '@/pages/dashboard/student/page'
 import StudentProfilePage from '@/pages/dashboard/student/profile/page'
@@ -28,6 +28,16 @@ import { GuestOnly } from '@/routes/GuestOnly'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { RoleBasedRoute } from '@/routes/RoleBasedRoute'
 import SessionExpiredDialog from '@/components/common/SessionExpiredDialog'
+// SuperAdmin
+import SuperAdminLayout from '@/components/layout/SuperAdminLayout'
+import SuperAdminOverviewPage from '@/pages/dashboard/super-admin/overview/page'
+import SuperAdminUsersPage from '@/pages/dashboard/super-admin/users/page'
+import SuperAdminRbacPage from '@/pages/dashboard/super-admin/rbac/page'
+import SuperAdminHealthPage from '@/pages/dashboard/super-admin/health/page'
+import SuperAdminAuditLogsPage from '@/pages/dashboard/super-admin/audit-logs/page'
+import SuperAdminLogsPage from '@/pages/dashboard/super-admin/logs/page'
+import SuperAdminConfigPage from '@/pages/dashboard/super-admin/configuration/page'
+import SuperAdminSecurityPage from '@/pages/dashboard/super-admin/security/page'
 
 export default function App() {
   return (
@@ -53,17 +63,27 @@ export default function App() {
           }
         />
 
-        {/* SuperAdmin Dashboard - only SUPER_ADMIN role */}
+        {/* SuperAdmin Dashboard — nested layout with sidebar */}
         <Route
           path="/dashboard/super-admin"
           element={
             <ProtectedRoute>
               <RoleBasedRoute allowedRoles={['SUPER_ADMIN']}>
-                <SuperAdminDashboard />
+                <SuperAdminLayout />
               </RoleBasedRoute>
             </ProtectedRoute>
           }
-        />
+        >
+          <Route index element={<SuperAdminOverviewPage />} />
+          <Route path="users" element={<SuperAdminUsersPage />} />
+          <Route path="rbac" element={<SuperAdminRbacPage />} />
+          <Route path="health" element={<SuperAdminHealthPage />} />
+          <Route path="audit-logs" element={<SuperAdminAuditLogsPage />} />
+          <Route path="logs" element={<SuperAdminLogsPage />} />
+          <Route path="configuration" element={<SuperAdminConfigPage />} />
+          <Route path="security" element={<SuperAdminSecurityPage />} />
+          <Route path="*" element={<Navigate to="/dashboard/super-admin" replace />} />
+        </Route>
 
         {/* Admin Dashboard — nested layout with sidebar */}
         <Route
@@ -91,6 +111,7 @@ export default function App() {
 
           <Route path="rooms" element={<AdminRoomsPage />} />
 
+          <Route path="id-cards" element={<IdCardsPage />} />
           <Route path="users/:type/:id" element={<UserDetailsPage />} />
           {/* Catch-all for unknown admin sub-routes */}
           <Route path="*" element={<Navigate to="/dashboard/admin" replace />} />

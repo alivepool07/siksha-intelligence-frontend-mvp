@@ -27,7 +27,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ProfileImageUploader } from "@/components/shared/ProfileImageUploader";
 import { AddressEditorDialog } from "@/features/student/profile/components/AddressEditorDialog";
 import { MedicalEditorDialog } from "@/features/student/profile/components/MedicalEditorDialog";
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog";
 import type { GuardianProfileDTO } from "@/services/types/profile";
+import { idCardService, triggerBlobDownload } from "@/services/idCard";
+import { IdCardPreview } from "@/features/uis/id-card/IdCardPreview";
 
 /* ── Animation Variants ─────────────────────────────────────────────── */
 const stagger = {
@@ -70,6 +76,7 @@ export default function StudentProfilePage() {
 
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [isMedicalModalOpen, setIsMedicalModalOpen] = useState(false);
+  const [isIdCardModalOpen, setIsIdCardModalOpen] = useState(false);
 
   // Profile data
   const { data, isLoading, isError, refetch } = useQuery({
@@ -98,6 +105,8 @@ export default function StudentProfilePage() {
     },
     staleTime: 5 * 60 * 1000,
   });
+  
+
 
   if (isError) {
     return (
@@ -115,6 +124,17 @@ export default function StudentProfilePage() {
   const { basicProfile, studentDetails, addresses } = data;
   const fullName = [basicProfile.firstName, basicProfile.middleName, basicProfile.lastName].filter(Boolean).join(" ");
   const primaryAddress = addresses?.find((a) => a.addressType === "HOME") || addresses?.[0];
+
+  const handleDownloadIdCard = async () => {
+    try {
+      const blob = await idCardService.downloadMyIdCard();
+      triggerBlobDownload(blob.data, "my-id-card.pdf");
+    } catch (error) {
+      console.error("Failed to download ID card:", error);
+    }
+  };
+
+
 
   return (
     <motion.div
@@ -170,10 +190,21 @@ export default function StudentProfilePage() {
               {/* Quick meta pills — right side */}
               <div className="hidden md:flex flex-col items-end gap-1.5 text-right shrink-0">
                 {basicProfile.dateOfBirth && (
-                  <span className="text-xs text-muted-foreground flex items-center gap-1.5 bg-muted/50 px-2.5 py-1 rounded-full">
-                    <Calendar className="w-3 h-3" />
-                    {new Date(basicProfile.dateOfBirth).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
-                  </span>
+                  <div className="flex flex-col items-end gap-2">
+                    <span className="text-xs text-muted-foreground flex items-center gap-1.5 bg-muted/50 px-2.5 py-1 rounded-full">
+                      <Calendar className="w-3 h-3" />
+                      {new Date(basicProfile.dateOfBirth).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                    </span>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-8 text-[11px] font-bold gap-1.5 px-3 rounded-full border-blue-100 hover:border-blue-200 hover:bg-blue-50/50 text-blue-600 shadow-sm"
+                      onClick={() => setIsIdCardModalOpen(true)}
+                    >
+                      <Briefcase className="w-3.5 h-3.5" />
+                      View ID Card
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
@@ -375,6 +406,17 @@ export default function StudentProfilePage() {
       {/* CRUD Dialogs */}
       <AddressEditorDialog isOpen={isAddressModalOpen} onClose={() => setIsAddressModalOpen(false)} initialData={primaryAddress} />
       <MedicalEditorDialog isOpen={isMedicalModalOpen} onClose={() => setIsMedicalModalOpen(false)} initialData={medicalRecord} />
+
+      {/* ID Card Modal */}
+      <Dialog open={isIdCardModalOpen} onOpenChange={setIsIdCardModalOpen}>
+        <DialogContent className="max-w-fit p-0 overflow-hidden border-none bg-transparent shadow-none">
+           <div className="p-8">
+            <IdCardPreview
+              onDownload={handleDownloadIdCard}
+            />
+           </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }
