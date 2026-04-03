@@ -15,6 +15,9 @@ import { Badge } from '@/components/ui/badge'
 import {
   Tabs, TabsContent, TabsList, TabsTrigger,
 } from '@/components/ui/tabs'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
 import type { AppSettingDTO, SettingUpdateRequest } from '@/features/super-admin/types'
 
 // ── Helpers ───────────────────────────────────────────────────────────
@@ -52,6 +55,23 @@ function SettingField({
           checked={value === 'true'}
           onCheckedChange={(v) => onChange(v ? 'true' : 'false')}
         />
+      </div>
+    )
+  }
+
+  if (setting.key === 'school.id_card_header_mode') {
+    return (
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-foreground">{setting.description}</label>
+        <Select value={value} onValueChange={onChange}>
+          <SelectTrigger className="font-mono text-sm">
+            <SelectValue placeholder="Select mode" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="TEXT">TEXT (Standard typography)</SelectItem>
+            <SelectItem value="IMAGE">IMAGE (Full width header image)</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
     )
   }
@@ -170,16 +190,24 @@ function SettingsGroupCard({
       </div>
 
       <div className="space-y-4 p-5">
-        {settings.map((s) => (
-          <SettingField
-            key={s.key}
-            setting={s}
-            value={localDraft[s.key] ?? s.value}
-            onChange={(val) => handleChange(s.key, val)}
-            revealed={revealed.has(s.key)}
-            onReveal={() => toggle(s.key)}
-          />
-        ))}
+        {settings.map((s) => {
+          // Conditional visibility for ID card header image URL
+          if (s.key === 'school.id_card_header_image_url') {
+            const mode = localDraft['school.id_card_header_mode']
+            if (mode !== 'IMAGE') return null
+          }
+
+          return (
+            <SettingField
+              key={s.key}
+              setting={s}
+              value={localDraft[s.key] ?? s.value}
+              onChange={(val) => handleChange(s.key, val)}
+              revealed={revealed.has(s.key)}
+              onReveal={() => toggle(s.key)}
+            />
+          )
+        })}
       </div>
     </div>
   )

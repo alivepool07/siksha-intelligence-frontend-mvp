@@ -202,5 +202,24 @@ export const adminService = {
   unlinkGuardian(studentId: string, guardianId: string) {
     return api.delete<string>(`/auth/admin/users/student/${studentId}/guardian/${guardianId}/unlink`);
   },
+
+  // ── Bulk Operations ──────────────────────────────────────────────────
+
+  /** POST /auth/admin/bulk-upload/photos/{userType} */
+  uploadBulkPhotos(userType: "students" | "staff", file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.post<BulkUploadReportDTO>(`/auth/admin/bulk-upload/photos/${userType}`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
 };
+
+export interface BulkUploadReportDTO {
+  success: number;
+  failed: number;
+  errors: string[];
+}
 

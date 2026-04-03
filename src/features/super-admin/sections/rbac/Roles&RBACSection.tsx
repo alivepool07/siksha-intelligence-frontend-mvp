@@ -1,6 +1,6 @@
 import { Shield } from 'lucide-react'
 
-export default function Roles&RBACSection() {
+export default function RolesAndRBACSection() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">

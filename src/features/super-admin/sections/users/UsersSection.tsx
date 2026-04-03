@@ -6,7 +6,7 @@ import { sessionService, guardianService } from '@/features/super-admin/services
 import { api } from '@/lib/axios'
 import {
   Users, Search, UserX, Loader2, Plus, GraduationCap, Briefcase,
-  Heart, Phone, ChevronDown, ChevronRight,
+  Heart, Phone, ChevronDown, ChevronRight, Printer, CreditCard, UploadCloud
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -20,6 +20,9 @@ import {
   Tabs, TabsContent, TabsList, TabsTrigger,
 } from '@/components/ui/tabs'
 import type { GuardianSummaryDto } from '@/features/super-admin/types'
+import { idCardService, triggerBlobDownload } from '@/services/idCard'
+import { IdCardBatchDialog } from '@/features/uis/id-card/IdCardBatchDialog'
+import { BulkPhotoUploadDialog } from '@/features/uis/id-card/BulkPhotoUploadDialog'
 
 // ── Create School Admin Dialog ────────────────────────────────────────
 
@@ -137,6 +140,22 @@ function StaffRow({ member }: { member: StaffSummaryDTO }) {
       >
         {member.active ? 'Active' : 'Inactive'}
       </Badge>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="shrink-0 gap-1.5 text-muted-foreground hover:text-primary text-xs"
+        onClick={async () => {
+          try {
+            const res = await idCardService.downloadStaffIdCard(member.staffId);
+            triggerBlobDownload(res.data, `staff-id-${member.staffId}.pdf`);
+          } catch (e) {
+            toast.error('Failed to download ID Card');
+          }
+        }}
+      >
+        <CreditCard className="h-3.5 w-3.5" />
+        ID Card
+      </Button>
       <Button
         variant="ghost"
         size="sm"
@@ -260,6 +279,9 @@ export default function UsersSection() {
   const [studentSearch, setStudentSearch] = useState('')
   const [guardianSearch, setGuardianSearch] = useState('')
   const [guardianPage, setGuardianPage] = useState(0)
+  const [batchDialogOpen, setBatchDialogOpen] = useState(false)
+  const [bulkPhotoOpen, setBulkPhotoOpen] = useState(false)
+  const [bulkPhotoType, setBulkPhotoType] = useState<'students' | 'staff'>('students')
 
   const { data: staffPage, isLoading: staffLoading } = useQuery({
     queryKey: ['admin', 'staff', staffSearch],
@@ -345,7 +367,7 @@ export default function UsersSection() {
         {/* ── Staff ── */}
         <TabsContent value="staff" className="mt-4">
           <div className="space-y-3">
-            <div className="relative">
+            <div className="relative flex gap-2 w-full max-w-sm">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search staff…"
@@ -353,6 +375,9 @@ export default function UsersSection() {
                 value={staffSearch}
                 onChange={(e) => setStaffSearch(e.target.value)}
               />
+              <Button onClick={() => { setBulkPhotoType('staff'); setBulkPhotoOpen(true); }} variant="outline" className="shrink-0 gap-2">
+                <UploadCloud className="h-4 w-4" /> Upload Photos
+              </Button>
             </div>
             <div className="rounded-xl border border-border bg-card shadow-sm">
               {staffLoading ? (
@@ -372,7 +397,7 @@ export default function UsersSection() {
         {/* ── Students ── */}
         <TabsContent value="students" className="mt-4">
           <div className="space-y-3">
-            <div className="relative">
+            <div className="flex gap-2 relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search students…"
@@ -380,6 +405,12 @@ export default function UsersSection() {
                 value={studentSearch}
                 onChange={(e) => setStudentSearch(e.target.value)}
               />
+              <Button onClick={() => setBatchDialogOpen(true)} variant="outline" className="shrink-0 gap-2">
+                <Printer className="h-4 w-4" /> Batch Print IDs
+              </Button>
+              <Button onClick={() => { setBulkPhotoType('students'); setBulkPhotoOpen(true); }} variant="outline" className="shrink-0 gap-2">
+                <UploadCloud className="h-4 w-4" /> Upload Photos
+              </Button>
             </div>
             <div className="rounded-xl border border-border bg-card shadow-sm">
               {studentLoading ? (
@@ -404,14 +435,32 @@ export default function UsersSection() {
                         {s.className && ` · ${s.className}${s.sectionName ? ` - ${s.sectionName}` : ''}`}
                       </p>
                     </div>
-                    <Badge
-                      variant="outline"
-                      className={cn('shrink-0 text-xs', s.enrollmentStatus === 'ACTIVE'
-                        ? 'border-green-200 bg-green-50 text-green-700'
-                        : '')}
-                    >
-                      {s.enrollmentStatus}
-                    </Badge>
+                    <div className="flex shrink-0 items-center justify-end gap-2">
+                       <Badge
+                        variant="outline"
+                        className={cn('text-xs shrink-0', s.enrollmentStatus === 'ACTIVE'
+                          ? 'border-green-200 bg-green-50 text-green-700'
+                          : '')}
+                      >
+                        {s.enrollmentStatus}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-1.5 text-muted-foreground hover:text-primary text-xs"
+                        onClick={async () => {
+                          try {
+                            const res = await idCardService.downloadStudentIdCard(s.studentId);
+                            triggerBlobDownload(res.data, `student-id-${s.studentId}.pdf`);
+                          } catch (e) {
+                            toast.error('Failed to download ID Card');
+                          }
+                        }}
+                      >
+                        <CreditCard className="h-3.5 w-3.5" />
+                        ID Card
+                      </Button>
+                    </div>
                   </div>
                 ))
               )}
@@ -480,6 +529,8 @@ export default function UsersSection() {
       </Tabs>
 
       <CreateSchoolAdminDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+      <IdCardBatchDialog open={batchDialogOpen} onClose={() => setBatchDialogOpen(false)} />
+      <BulkPhotoUploadDialog open={bulkPhotoOpen} onClose={() => setBulkPhotoOpen(false)} userType={bulkPhotoType} />
     </div>
   )
 }

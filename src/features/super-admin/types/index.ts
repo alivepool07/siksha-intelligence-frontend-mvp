@@ -198,6 +198,13 @@ export interface WhiteLabelConfig {
   timezone: string
   currency: string
   dateFormat: string
+  schoolShortName: string
+  schoolTagline: string
+  schoolAddress: string
+  schoolPhone: string
+  schoolEmail: string
+  idCardHeaderMode: 'TEXT' | 'IMAGE'
+  idCardHeaderImageUrl: string
   features: {
     finance: boolean
     examination: boolean

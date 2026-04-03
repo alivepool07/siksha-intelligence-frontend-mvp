@@ -13,12 +13,7 @@ import type { LogLevel } from '@/features/super-admin/types'
 
 // ── Constants ─────────────────────────────────────────────────────────
 
-const LEVEL_COLORS: Record<string, string> = {
-  ERROR: 'bg-red-100 text-red-700 border-red-200',
-  WARN:  'bg-amber-100 text-amber-700 border-amber-200',
-  INFO:  'bg-blue-100 text-blue-700 border-blue-200',
-  DEBUG: 'bg-gray-100 text-gray-600 border-gray-200',
-}
+
 
 const LEVEL_TEXT_COLORS: Record<string, string> = {
   ERROR: 'text-red-400',
